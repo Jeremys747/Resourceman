@@ -1,7 +1,83 @@
 package com.example;
 
+import net.runelite.api.ItemComposition;
+
 public class ItemRules
 {
+    private static final String[] BLOCKED_WIELDABLE = {
+            "toktz-xil-ul"
+    };
+
+    public static boolean isAllowedItem(String itemName, ItemComposition comp)
+    {
+        if (itemName == null || itemName.equals("null") || itemName.isEmpty())
+        {
+            return true;
+        }
+
+        String lower = itemName.toLowerCase().trim();
+
+        // Currency and blessings always allowed
+        if (Whitelist.isWhitelisted(lower))
+        {
+            return true;
+        }
+
+        // Armour sets always allowed
+        if (lower.contains(" set"))
+        {
+            return true;
+        }
+
+        // Darts always blocked
+        if (Whitelist.isDart(lower))
+        {
+            return false;
+        }
+
+        // Arrows always blocked
+        if (lower.endsWith("arrow") || lower.endsWith("arrows"))
+        {
+            return false;
+        }
+
+        // Bolts always blocked
+        if (lower.endsWith("bolt") || lower.endsWith("bolts"))
+        {
+            return false;
+        }
+
+        // Throwing knives blocked
+        if (lower.endsWith(" knife") || lower.endsWith(" knife(p)") ||
+                lower.endsWith(" knife(p+)") || lower.endsWith(" knife(p++)"))
+        {
+            return false;
+        }
+
+        // Thrownaxes blocked
+        if (lower.endsWith("thrownaxe"))
+        {
+            return false;
+        }
+
+        // Specific blocked wieldables
+        for (String blocked : BLOCKED_WIELDABLE)
+        {
+            if (lower.equals(blocked))
+            {
+                return false;
+            }
+        }
+
+        // Use item composition to check if it's equipment
+        if (comp != null)
+        {
+            return isEquipmentByComposition(comp);
+        }
+
+        return false;
+    }
+
     public static boolean isAllowedItem(String itemName)
     {
         if (itemName == null || itemName.equals("null") || itemName.isEmpty())
@@ -11,154 +87,68 @@ public class ItemRules
 
         String lower = itemName.toLowerCase().trim();
 
-        if (Whitelist.isDart(lower))
-        {
-            return false;
-        }
-
         if (Whitelist.isWhitelisted(lower))
         {
             return true;
         }
 
-        if (isResource(lower))
+        if (lower.contains(" set"))
+        {
+            return true;
+        }
+
+        if (Whitelist.isDart(lower))
         {
             return false;
         }
 
-        if (isEquipment(lower))
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    private static boolean isResource(String lower)
-    {
-        if (lower.endsWith("(1)") || lower.endsWith("(2)") ||
-                lower.endsWith("(3)") || lower.endsWith("(4)"))
-        {
-            return true;
-        }
-
-        if (lower.endsWith("rune") || lower.endsWith("runes"))
-        {
-            return true;
-        }
-
         if (lower.endsWith("arrow") || lower.endsWith("arrows"))
         {
-            return true;
+            return false;
         }
 
         if (lower.endsWith("bolt") || lower.endsWith("bolts"))
         {
-            return true;
+            return false;
         }
 
-        if (lower.endsWith("javelin") || lower.endsWith("javelins"))
+        if (lower.endsWith(" knife") || lower.endsWith(" knife(p)") ||
+                lower.endsWith(" knife(p+)") || lower.endsWith(" knife(p++)"))
         {
-            return true;
+            return false;
         }
 
-        if (lower.contains("swordfish"))
+        if (lower.endsWith("thrownaxe"))
         {
-            return true;
+            return false;
         }
 
-        // Raw leather only
-        if (lower.equals("leather") || lower.equals("hard leather") ||
-                lower.equals("soft leather"))
+        for (String blocked : BLOCKED_WIELDABLE)
         {
-            return true;
-        }
-
-        // Raw dragonhide only - NOT sets or armour
-        if (lower.equals("green dragonhide") || lower.equals("blue dragonhide") ||
-                lower.equals("red dragonhide") || lower.equals("black dragonhide") ||
-                lower.equals("dragonhide"))
-        {
-            return true;
-        }
-
-        // Specific tar items
-        if (lower.equals("swamp tar") || lower.equals("guam tar") ||
-                lower.equals("marrentill tar") || lower.equals("tarromin tar") ||
-                lower.equals("harralander tar"))
-        {
-            return true;
-        }
-
-        String[] resourceKeywords = {
-                " ore", " bar", " logs", " log", "raw ", "grimy ", "clean ",
-                " seed", " herb", " fish", "bones", "fur",
-                "feather", " essence", "clay", "flax", "coal", "grain",
-                "potato", "onion", "cabbage", "berry", "meat", "egg",
-                "milk", "wool", "silk", "sand", "molten glass",
-                "tinderbox", "noted", "potion", " mix",
-                "brew", " dose", "bait", "dynamite", "compost",
-                "limestone", "bucket", "pot ", "bowl", "vial", "jug"
-        };
-
-        for (String keyword : resourceKeywords)
-        {
-            if (lower.contains(keyword))
+            if (lower.equals(blocked))
             {
-                return true;
+                return false;
             }
         }
 
         return false;
     }
 
-    private static boolean isEquipment(String lower)
+    public static boolean isEquipmentByComposition(ItemComposition comp)
     {
-        String[] materials = {
-                "bronze ", "iron ", "steel ", "black ", "mithril ", "adamant ",
-                "rune ", "dragon ", "barrows", "crystal ", "3rd age",
-                "bandos", "armadyl", "ancestral", "torva", "pernix", "virtus",
-                "dharok", "guthan", "torag", "verac", "ahrim", "karil",
-                "void ", "graceful", "shayzien", "hosidius", "lovakengj",
-                "arceuus", "piscarilius", "gilded ", "studded ",
-                "green d'hide", "blue d'hide", "red d'hide", "black d'hide",
-                "green dragonhide ", "blue dragonhide ", "red dragonhide ",
-                "black dragonhide ", "leather "
-        };
-
-        for (String material : materials)
+        String[] actions = comp.getInventoryActions();
+        if (actions == null)
         {
-            if (lower.startsWith(material))
+            return false;
+        }
+        for (String action : actions)
+        {
+            if (action == null) continue;
+            if (action.equals("Wear") || action.equals("Wield") || action.equals("Equip"))
             {
                 return true;
             }
         }
-
-        String[] equipKeywords = {
-                "scimitar", "sword", "dagger", "mace", "axe", "bow", "staff",
-                "wand", "shield", "helm", "helmet", "platebody", "platelegs",
-                "plateskirt", "chainbody", "chainlegs", "chaps", "coif",
-                "boots", "gloves", "cape", "amulet", "necklace", "ring",
-                "bracelet", "hat", "hood", "mask", "top",
-                "robe", "skirt", "cloak", "whip", "halberd", "spear", "hasta",
-                "crossbow", "ballista", "blowpipe", "trident", "gauntlets",
-                "vambraces", "kiteshield", "sq shield", "defender", "blessed",
-                "armour", "armor", "tassets", "cuisse", "greaves",
-                "full helm", "med helm", "torture", "anguish", "occult",
-                "fury", "glory", "amulet of", "berserker", "archer",
-                "seers", "warrior", "recoil", "suffering", "tyrannical",
-                "treasonous", "zenyte", "onyx", "dragonstone",
-                "ornament kit", "body", "legs", " set"
-        };
-
-        for (String keyword : equipKeywords)
-        {
-            if (lower.contains(keyword))
-            {
-                return true;
-            }
-        }
-
         return false;
     }
 }

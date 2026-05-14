@@ -86,11 +86,14 @@ public class TradeListener
     private boolean isViolationItem(int itemId)
     {
         ItemComposition itemComp = client.getItemDefinition(itemId);
+
+        // Untradeables never a violation
         if (!itemComp.isTradeable())
         {
             return false;
         }
+
         String itemName = itemComp.getName();
-        return !ItemRules.isAllowedItem(itemName);
+        return !ItemRules.isAllowedItem(itemName, itemComp);
     }
 }

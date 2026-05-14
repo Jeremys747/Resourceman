@@ -36,6 +36,7 @@ public class GroundItemListener
 
         ItemComposition itemComp = client.getItemDefinition(itemId);
 
+        // Untradeables always allowed
         if (!itemComp.isTradeable())
         {
             return;
@@ -43,13 +44,13 @@ public class GroundItemListener
 
         String itemName = itemComp.getName();
 
-        // Equipment is always allowed to pick up
-        if (ItemRules.isAllowedItem(itemName))
+        // If item is equipment it can always be picked up
+        if (ItemRules.isAllowedItem(itemName, itemComp))
         {
             return;
         }
 
-        // Check ownership
+        // It's a resource - check ownership
         int x = event.getActionParam0();
         int y = event.getActionParam1();
         int plane = client.getPlane();
@@ -78,7 +79,6 @@ public class GroundItemListener
             }
         }
 
-        // Silently remove the menu entry - no message needed
         client.setMenuEntries(removeEntry(client.getMenuEntries(), event.getMenuEntry()));
     }
 

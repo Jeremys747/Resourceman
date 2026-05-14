@@ -9,7 +9,6 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.game.ItemManager;
 import net.runelite.client.util.Text;
 
 public class GrandExchangeListener
@@ -22,9 +21,6 @@ public class GrandExchangeListener
 
     @Inject
     private ResourcemanPlugin plugin;
-
-    @Inject
-    private ItemManager itemManager;
 
     @Subscribe
     public void onGameTick(GameTick event)
@@ -58,7 +54,7 @@ public class GrandExchangeListener
                 continue;
             }
 
-            ItemComposition comp = itemManager.getItemComposition(itemId);
+            ItemComposition comp = client.getItemDefinition(itemId);
             String itemName = comp == null ? null : comp.getName();
 
             if (itemName == null || itemName.isEmpty() || itemName.equals("null"))
@@ -66,9 +62,8 @@ public class GrandExchangeListener
                 continue;
             }
 
-            if (!ItemRules.isAllowedItem(itemName))
+            if (!ItemRules.isAllowedItem(itemName, comp))
             {
-                // Grey out sprite and item only, leave text visible for clicking
                 spriteWidget.setOpacity(150);
                 itemWidget.setOpacity(150);
                 textWidget.setTextColor(0x808080);
@@ -103,7 +98,33 @@ public class GrandExchangeListener
         }
 
         String itemName = Text.removeTags(menuTarget).trim();
-        if (!ItemRules.isAllowedItem(itemName))
+
+        // Try to find item composition from search results widget
+        ItemComposition comp = null;
+        Widget searchResults = client.getWidget(GE_SEARCH_GROUP, GE_SEARCH_RESULTS_CHILD);
+        if (searchResults != null)
+        {
+            Widget[] children = searchResults.getDynamicChildren();
+            if (children != null)
+            {
+                for (int i = 2; i < children.length; i += 3)
+                {
+                    Widget itemWidget = children[i];
+                    if (itemWidget == null || itemWidget.getItemId() == -1)
+                    {
+                        continue;
+                    }
+                    ItemComposition c = client.getItemDefinition(itemWidget.getItemId());
+                    if (c != null && itemName.equalsIgnoreCase(c.getName()))
+                    {
+                        comp = c;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!ItemRules.isAllowedItem(itemName, comp))
         {
             event.consume();
             plugin.triggerViolation();
