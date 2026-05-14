@@ -3,18 +3,16 @@ package com.example;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * Contains all item names that are allowed to be traded or bought on the GE.
- * Based on all OSRS equipment slot tables from the wiki.
- * Darts and non-blessing ammunition are excluded even though they appear
- * in the one-handed and ammunition slot tables.
- */
 public class Whitelist
 {
     private static final Set<String> ALLOWED_ITEMS = new HashSet<>();
 
     static
     {
+        // Currency - always allowed
+        ALLOWED_ITEMS.add("coins");
+        ALLOWED_ITEMS.add("platinum token");
+
         // ─── AMMUNITION SLOT (Blessings only) ──────────────────
         ALLOWED_ITEMS.add("holy blessing");
         ALLOWED_ITEMS.add("peaceful blessing");
@@ -32,10 +30,6 @@ public class Whitelist
         ALLOWED_ITEMS.add("mith grapple");
     }
 
-    /**
-     * Check if an item name is on the whitelist.
-     * Item name is lowercased before checking.
-     */
     public static boolean isWhitelisted(String itemName)
     {
         if (itemName == null)
@@ -45,10 +39,6 @@ public class Whitelist
         return ALLOWED_ITEMS.contains(itemName.toLowerCase());
     }
 
-    /**
-     * Check if an item name is a dart (blocked even though
-     * it appears in the one-handed weapon slot table).
-     */
     public static boolean isDart(String itemName)
     {
         if (itemName == null)
@@ -60,9 +50,6 @@ public class Whitelist
                 || name.endsWith(" dart(p+)") || name.endsWith(" dart(p++)");
     }
 
-    /**
-     * Add a custom item to the whitelist (used by the UI panel).
-     */
     public static void addItem(String itemName)
     {
         if (itemName != null && !itemName.isEmpty())
@@ -71,9 +58,6 @@ public class Whitelist
         }
     }
 
-    /**
-     * Remove a custom item from the whitelist (used by the UI panel).
-     */
     public static void removeItem(String itemName)
     {
         if (itemName != null)

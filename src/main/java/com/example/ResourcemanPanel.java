@@ -4,17 +4,20 @@ import com.example.data.ResourceTracker;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.image.BufferedImage;
 import java.util.Map;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTabbedPane;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
@@ -23,19 +26,9 @@ public class ResourcemanPanel extends PluginPanel
 {
     private final ResourcemanPlugin plugin;
 
-    // Resources tab
     private JPanel resourceListPanel;
     private JLabel sessionResourceLabel;
     private JLabel allTimeResourceLabel;
-
-    // Violations tab
-    private JLabel sessionViolationsLabel;
-    private JLabel allTimeViolationsLabel;
-    private JLabel geViolationsLabel;
-    private JLabel tradeViolationsLabel;
-    private JLabel groundViolationsLabel;
-    private JLabel telegrabViolationsLabel;
-    private JLabel shopViolationsLabel;
 
     public ResourcemanPanel(ResourcemanPlugin plugin)
     {
@@ -47,126 +40,88 @@ public class ResourcemanPanel extends PluginPanel
 
     private void build()
     {
-        // ─── Title ─────────────────────────────────────────
         JLabel title = new JLabel("Resourceman Mode");
         title.setForeground(Color.WHITE);
         title.setFont(FontManager.getRunescapeBoldFont());
         title.setHorizontalAlignment(SwingConstants.CENTER);
-        title.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        title.setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
         add(title, BorderLayout.NORTH);
 
-        // ─── Tabs ───────────────────────────────────────────
-        JTabbedPane tabs = new JTabbedPane();
-        tabs.setBackground(ColorScheme.DARK_GRAY_COLOR);
-        tabs.setForeground(Color.WHITE);
+        add(buildResourcesPanel(), BorderLayout.CENTER);
 
-        tabs.addTab("Resources", buildResourcesTab());
-        tabs.addTab("Violations", buildViolationsTab());
+        JButton resetButton = new JButton("Reset All Data");
+        resetButton.setBackground(new Color(150, 30, 30));
+        resetButton.setForeground(Color.WHITE);
+        resetButton.setFocusPainted(false);
+        resetButton.setBorder(BorderFactory.createEmptyBorder(6, 0, 6, 0));
+        resetButton.addActionListener(e ->
+        {
+            int first = JOptionPane.showConfirmDialog(
+                    this,
+                    "Are you sure you want to reset ALL Resourceman Mode data?\nThis cannot be undone.",
+                    "Reset Resourceman Data",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE
+            );
 
-        add(tabs, BorderLayout.CENTER);
+            if (first != JOptionPane.YES_OPTION)
+            {
+                return;
+            }
+
+            int second = JOptionPane.showConfirmDialog(
+                    this,
+                    "This will permanently delete all tracked resources.\nAre you ABSOLUTELY sure?",
+                    "Final Confirmation",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE
+            );
+
+            if (second != JOptionPane.YES_OPTION)
+            {
+                return;
+            }
+
+            plugin.resetAllData();
+        });
+
+        add(resetButton, BorderLayout.SOUTH);
     }
 
-    private JPanel buildResourcesTab()
+    private JPanel buildResourcesPanel()
     {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBackground(ColorScheme.DARK_GRAY_COLOR);
 
-        // Summary row
-        JPanel summaryPanel = new JPanel(new GridLayout(2, 1));
-        summaryPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        summaryPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-
-        sessionResourceLabel = new JLabel("Session: 0 items");
-        sessionResourceLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        sessionResourceLabel.setFont(FontManager.getRunescapeSmallFont());
+        JPanel header = new JPanel(new GridLayout(2, 1, 0, 2));
+        header.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        header.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
 
         allTimeResourceLabel = new JLabel("All-time: 0 items");
         allTimeResourceLabel.setForeground(Color.WHITE);
         allTimeResourceLabel.setFont(FontManager.getRunescapeSmallFont());
 
-        summaryPanel.add(allTimeResourceLabel);
-        summaryPanel.add(sessionResourceLabel);
-        panel.add(summaryPanel);
+        sessionResourceLabel = new JLabel("Session: 0 items");
+        sessionResourceLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        sessionResourceLabel.setFont(FontManager.getRunescapeSmallFont());
 
-        // Resource list
+        header.add(allTimeResourceLabel);
+        header.add(sessionResourceLabel);
+        wrapper.add(header, BorderLayout.NORTH);
+
         resourceListPanel = new JPanel();
         resourceListPanel.setLayout(new BoxLayout(resourceListPanel, BoxLayout.Y_AXIS));
         resourceListPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
 
-        JScrollPane scrollPane = new JScrollPane(resourceListPanel);
-        scrollPane.setBackground(ColorScheme.DARK_GRAY_COLOR);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.setPreferredSize(new Dimension(0, 400));
+        JScrollPane scroll = new JScrollPane(resourceListPanel);
+        scroll.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        scroll.getViewport().setBackground(ColorScheme.DARK_GRAY_COLOR);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        wrapper.add(scroll, BorderLayout.CENTER);
 
-        panel.add(scrollPane);
-
-        return panel;
+        return wrapper;
     }
 
-    private JPanel buildViolationsTab()
-    {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(ColorScheme.DARK_GRAY_COLOR);
-        panel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-
-        // Session violations
-        JLabel sessionHeader = new JLabel("── Session ──");
-        sessionHeader.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        sessionHeader.setFont(FontManager.getRunescapeSmallFont());
-        sessionHeader.setAlignmentX(CENTER_ALIGNMENT);
-        panel.add(sessionHeader);
-
-        sessionViolationsLabel = makeViolationLabel("Total: 0");
-        panel.add(sessionViolationsLabel);
-
-        // All time violations
-        JLabel allTimeHeader = new JLabel("── All-time ──");
-        allTimeHeader.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        allTimeHeader.setFont(FontManager.getRunescapeSmallFont());
-        allTimeHeader.setAlignmentX(CENTER_ALIGNMENT);
-        allTimeHeader.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
-        panel.add(allTimeHeader);
-
-        allTimeViolationsLabel = makeViolationLabel("Total: 0");
-        panel.add(allTimeViolationsLabel);
-
-        // Breakdown
-        JLabel breakdownHeader = new JLabel("── Breakdown ──");
-        breakdownHeader.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        breakdownHeader.setFont(FontManager.getRunescapeSmallFont());
-        breakdownHeader.setAlignmentX(CENTER_ALIGNMENT);
-        breakdownHeader.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
-        panel.add(breakdownHeader);
-
-        geViolationsLabel = makeViolationLabel("Grand Exchange: 0");
-        tradeViolationsLabel = makeViolationLabel("Player Trade: 0");
-        groundViolationsLabel = makeViolationLabel("Ground Item: 0");
-        telegrabViolationsLabel = makeViolationLabel("Telegrab: 0");
-        shopViolationsLabel = makeViolationLabel("NPC Shop: 0");
-
-        panel.add(geViolationsLabel);
-        panel.add(tradeViolationsLabel);
-        panel.add(groundViolationsLabel);
-        panel.add(telegrabViolationsLabel);
-        panel.add(shopViolationsLabel);
-
-        return panel;
-    }
-
-    private JLabel makeViolationLabel(String text)
-    {
-        JLabel label = new JLabel(text);
-        label.setForeground(Color.WHITE);
-        label.setFont(FontManager.getRunescapeSmallFont());
-        label.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
-        return label;
-    }
-
-    /**
-     * Called to refresh all data in the panel.
-     */
     public void update()
     {
         SwingUtilities.invokeLater(() ->
@@ -177,19 +132,45 @@ public class ResourcemanPanel extends PluginPanel
                 return;
             }
 
-            // Update resource summary
             sessionResourceLabel.setText("Session: " +
                     String.format("%,d", tracker.getSessionResourceCount()) + " items");
             allTimeResourceLabel.setText("All-time: " +
                     String.format("%,d", tracker.getAllTimeResourceCount()) + " items");
 
-            // Update resource list
             resourceListPanel.removeAll();
+
+            ItemManager itemManager = plugin.getItemManager();
+
             for (Map.Entry<String, Integer> entry : tracker.getAllTimeResources().entrySet())
             {
                 JPanel row = new JPanel(new BorderLayout());
                 row.setBackground(ColorScheme.DARK_GRAY_COLOR);
-                row.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
+                row.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(0, 0, 1, 0, ColorScheme.DARKER_GRAY_COLOR),
+                        BorderFactory.createEmptyBorder(4, 4, 4, 4)
+                ));
+                row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+
+                JLabel iconLabel = new JLabel();
+                iconLabel.setPreferredSize(new Dimension(32, 32));
+                try
+                {
+                    BufferedImage img = itemManager.getImage(
+                            itemManager.search(entry.getKey())
+                                    .stream()
+                                    .findFirst()
+                                    .map(r -> r.getId())
+                                    .orElse(-1)
+                    );
+                    if (img != null)
+                    {
+                        iconLabel.setIcon(new ImageIcon(img));
+                    }
+                }
+                catch (Exception e)
+                {
+                    // No icon
+                }
 
                 JLabel nameLabel = new JLabel(capitalize(entry.getKey()));
                 nameLabel.setForeground(Color.WHITE);
@@ -199,22 +180,18 @@ public class ResourcemanPanel extends PluginPanel
                 quantLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
                 quantLabel.setFont(FontManager.getRunescapeSmallFont());
 
-                row.add(nameLabel, BorderLayout.WEST);
-                row.add(quantLabel, BorderLayout.EAST);
+                JPanel namePanel = new JPanel(new BorderLayout());
+                namePanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
+                namePanel.add(nameLabel, BorderLayout.WEST);
+                namePanel.add(quantLabel, BorderLayout.EAST);
+
+                row.add(iconLabel, BorderLayout.WEST);
+                row.add(namePanel, BorderLayout.CENTER);
                 resourceListPanel.add(row);
             }
 
             resourceListPanel.revalidate();
             resourceListPanel.repaint();
-
-            // Update violations
-            sessionViolationsLabel.setText("Total: " + tracker.getSessionViolations());
-            allTimeViolationsLabel.setText("Total: " + tracker.getAllTimeViolations());
-            geViolationsLabel.setText("Grand Exchange: " + tracker.getAllTimeGEViolations());
-            tradeViolationsLabel.setText("Player Trade: " + tracker.getAllTimeTradeViolations());
-            groundViolationsLabel.setText("Ground Item: " + tracker.getAllTimeGroundViolations());
-            telegrabViolationsLabel.setText("Telegrab: " + tracker.getAllTimeTelegrabViolations());
-            shopViolationsLabel.setText("NPC Shop: " + tracker.getAllTimeShopViolations());
         });
     }
 

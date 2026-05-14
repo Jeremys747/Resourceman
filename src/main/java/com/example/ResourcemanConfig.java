@@ -1,4 +1,3 @@
-
 package com.example;
 
 import net.runelite.client.config.Config;
@@ -22,6 +21,13 @@ public interface ResourcemanConfig extends Config
 			position = 1
 	)
 	String notificationsSection = "notifications";
+
+	@ConfigSection(
+			name = "Appearance",
+			description = "Settings for the plugin appearance",
+			position = 2
+	)
+	String appearanceSection = "appearance";
 
 	// ─── Enforcement ───────────────────────────────────────
 
@@ -61,5 +67,19 @@ public interface ResourcemanConfig extends Config
 	default boolean showChatMessage()
 	{
 		return true;
+	}
+
+	// ─── Appearance ────────────────────────────────────────
+
+	@ConfigItem(
+			keyName = "pluginIcon",
+			name = "Plugin Icon",
+			description = "Choose the icon shown in the sidebar",
+			section = appearanceSection,
+			position = 0
+	)
+	default ResourcemanIcon pluginIcon()
+	{
+		return ResourcemanIcon.RUNE_PICKAXE;
 	}
 }

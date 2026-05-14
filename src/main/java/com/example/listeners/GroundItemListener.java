@@ -36,7 +36,6 @@ public class GroundItemListener
 
         ItemComposition itemComp = client.getItemDefinition(itemId);
 
-        // Untradeables are always fine
         if (!itemComp.isTradeable())
         {
             return;
@@ -44,13 +43,13 @@ public class GroundItemListener
 
         String itemName = itemComp.getName();
 
-        // If item is allowed (equipment, blessing etc) anyone can pick it up
+        // Equipment is always allowed to pick up
         if (ItemRules.isAllowedItem(itemName))
         {
             return;
         }
 
-        // Item is a resource - check ownership
+        // Check ownership
         int x = event.getActionParam0();
         int y = event.getActionParam1();
         int plane = client.getPlane();
@@ -67,7 +66,6 @@ public class GroundItemListener
                     {
                         if (tileItem.getId() == itemId)
                         {
-                            // If it's yours allow it
                             if (tileItem.getOwnership() == TileItem.OWNERSHIP_SELF ||
                                     tileItem.getOwnership() == TileItem.OWNERSHIP_GROUP)
                             {
@@ -80,9 +78,8 @@ public class GroundItemListener
             }
         }
 
-        // Resource not owned by you - remove menu entry
+        // Silently remove the menu entry - no message needed
         client.setMenuEntries(removeEntry(client.getMenuEntries(), event.getMenuEntry()));
-        plugin.triggerViolation();
     }
 
     private MenuEntry[] removeEntry(MenuEntry[] entries, MenuEntry toRemove)

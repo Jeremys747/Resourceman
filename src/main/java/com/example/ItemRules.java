@@ -62,8 +62,22 @@ public class ItemRules
             return true;
         }
 
-        // Specific fish that contain equipment keyword "sword"
         if (lower.contains("swordfish"))
+        {
+            return true;
+        }
+
+        // Raw leather only
+        if (lower.equals("leather") || lower.equals("hard leather") ||
+                lower.equals("soft leather"))
+        {
+            return true;
+        }
+
+        // Raw dragonhide only - NOT sets or armour
+        if (lower.equals("green dragonhide") || lower.equals("blue dragonhide") ||
+                lower.equals("red dragonhide") || lower.equals("black dragonhide") ||
+                lower.equals("dragonhide"))
         {
             return true;
         }
@@ -78,7 +92,7 @@ public class ItemRules
 
         String[] resourceKeywords = {
                 " ore", " bar", " logs", " log", "raw ", "grimy ", "clean ",
-                " seed", " herb", " fish", "bones", "hide", "leather", "fur",
+                " seed", " herb", " fish", "bones", "fur",
                 "feather", " essence", "clay", "flax", "coal", "grain",
                 "potato", "onion", "cabbage", "berry", "meat", "egg",
                 "milk", "wool", "silk", "sand", "molten glass",
@@ -106,7 +120,10 @@ public class ItemRules
                 "bandos", "armadyl", "ancestral", "torva", "pernix", "virtus",
                 "dharok", "guthan", "torag", "verac", "ahrim", "karil",
                 "void ", "graceful", "shayzien", "hosidius", "lovakengj",
-                "arceuus", "piscarilius", "gilded "
+                "arceuus", "piscarilius", "gilded ", "studded ",
+                "green d'hide", "blue d'hide", "red d'hide", "black d'hide",
+                "green dragonhide ", "blue dragonhide ", "red dragonhide ",
+                "black dragonhide ", "leather "
         };
 
         for (String material : materials)
@@ -131,7 +148,7 @@ public class ItemRules
                 "fury", "glory", "amulet of", "berserker", "archer",
                 "seers", "warrior", "recoil", "suffering", "tyrannical",
                 "treasonous", "zenyte", "onyx", "dragonstone",
-                "ornament kit", "d'hide"
+                "ornament kit", "body", "legs", " set"
         };
 
         for (String keyword : equipKeywords)

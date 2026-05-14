@@ -4,18 +4,21 @@ import com.example.data.ResourceTracker;
 import com.example.listeners.GrandExchangeListener;
 import com.example.listeners.GroundItemListener;
 import com.example.listeners.ShopListener;
+import com.example.listeners.SkillResourceListener;
 import com.example.listeners.TradeListener;
 import com.google.inject.Provides;
 import javax.inject.Inject;
+import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.ChatMessageType;
+import net.runelite.api.GameState;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.events.NpcLootReceived;
-import net.runelite.client.events.PlayerLootReceived;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.game.ItemStack;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.chat.ChatMessageManager;
@@ -23,7 +26,6 @@ import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
-import net.runelite.client.ui.overlay.OverlayManager;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -37,6 +39,7 @@ public class ResourcemanPlugin extends Plugin
 {
 	public static final String VIOLATION_MESSAGE = "Resourcemen gather their own resources";
 	public static final int VIOLATION_SOUND = 2277;
+	private static final long VIOLATION_COOLDOWN_MS = 3000;
 
 	@Inject
 	private Client client;
@@ -60,10 +63,7 @@ public class ResourcemanPlugin extends Plugin
 	private ItemManager itemManager;
 
 	@Inject
-	private OverlayManager overlayManager;
-
-	@Inject
-	private ResourcemanOverlay overlay;
+	private ClientThread clientThread;
 
 	@Inject
 	private GrandExchangeListener grandExchangeListener;
@@ -77,9 +77,13 @@ public class ResourcemanPlugin extends Plugin
 	@Inject
 	private ShopListener shopListener;
 
+	@Inject
+	private SkillResourceListener skillResourceListener;
+
 	private ResourceTracker resourceTracker;
 	private ResourcemanPanel panel;
 	private NavigationButton navButton;
+	private long lastViolationTime = 0;
 
 	public ResourceTracker getResourceTracker()
 	{
@@ -96,7 +100,32 @@ public class ResourcemanPlugin extends Plugin
 		return itemManager;
 	}
 
+	public void resetAllData()
+	{
+		configManager.unsetConfiguration("resourceman", "trackedResources");
+		resourceTracker = new ResourceTracker(configManager);
+		panel.update();
+	}
+
 	private BufferedImage buildIcon()
+	{
+		try
+		{
+			int itemId = config.pluginIcon().getItemId();
+			BufferedImage image = itemManager.getImage(itemId);
+			if (image != null)
+			{
+				return image;
+			}
+		}
+		catch (Exception e)
+		{
+			log.debug("Failed to load icon", e);
+		}
+		return buildFallbackIcon();
+	}
+
+	private BufferedImage buildFallbackIcon()
 	{
 		BufferedImage image = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
 		Graphics2D g = image.createGraphics();
@@ -106,6 +135,29 @@ public class ResourcemanPlugin extends Plugin
 		g.drawString("R", 3, 12);
 		g.dispose();
 		return image;
+	}
+
+	private void updateIcon()
+	{
+		clientThread.invokeLater(() ->
+		{
+			BufferedImage icon = buildIcon();
+			SwingUtilities.invokeLater(() ->
+			{
+				if (navButton == null)
+				{
+					return;
+				}
+				clientToolbar.removeNavigation(navButton);
+				navButton = NavigationButton.builder()
+						.tooltip("Resourceman Mode")
+						.icon(icon)
+						.priority(5)
+						.panel(panel)
+						.build();
+				clientToolbar.addNavigation(navButton);
+			});
+		});
 	}
 
 	@Override
@@ -118,18 +170,23 @@ public class ResourcemanPlugin extends Plugin
 
 		navButton = NavigationButton.builder()
 				.tooltip("Resourceman Mode")
-				.icon(buildIcon())
+				.icon(buildFallbackIcon())
 				.priority(5)
 				.panel(panel)
 				.build();
 
 		clientToolbar.addNavigation(navButton);
-		overlayManager.add(overlay);
 
 		eventBus.register(grandExchangeListener);
 		eventBus.register(tradeListener);
 		eventBus.register(groundItemListener);
 		eventBus.register(shopListener);
+		eventBus.register(skillResourceListener);
+
+		if (client.getGameState() == GameState.LOGGED_IN)
+		{
+			updateIcon();
+		}
 
 		log.debug("Resourceman Mode started!");
 	}
@@ -138,39 +195,43 @@ public class ResourcemanPlugin extends Plugin
 	protected void shutDown() throws Exception
 	{
 		clientToolbar.removeNavigation(navButton);
-		overlayManager.remove(overlay);
 		eventBus.unregister(grandExchangeListener);
 		eventBus.unregister(tradeListener);
 		eventBus.unregister(groundItemListener);
 		eventBus.unregister(shopListener);
+		eventBus.unregister(skillResourceListener);
+		skillResourceListener.reset();
 		resourceTracker.resetSession();
 		log.debug("Resourceman Mode stopped!");
 	}
 
 	@Subscribe
-	public void onNpcLootReceived(NpcLootReceived event)
+	public void onGameStateChanged(GameStateChanged event)
 	{
-		for (ItemStack item : event.getItems())
+		if (event.getGameState() == GameState.LOGGED_IN)
 		{
-			String name = itemManager.getItemComposition(item.getId()).getName();
-			resourceTracker.trackResource(name, item.getQuantity());
+			updateIcon();
 		}
-		panel.update();
 	}
 
 	@Subscribe
-	public void onPlayerLootReceived(PlayerLootReceived event)
+	public void onConfigChanged(ConfigChanged event)
 	{
-		for (ItemStack item : event.getItems())
+		if (event.getGroup().equals("resourceman") && event.getKey().equals("pluginIcon"))
 		{
-			String name = itemManager.getItemComposition(item.getId()).getName();
-			resourceTracker.trackResource(name, item.getQuantity());
+			updateIcon();
 		}
-		panel.update();
 	}
 
 	public void triggerViolation()
 	{
+		long now = System.currentTimeMillis();
+		if (now - lastViolationTime < VIOLATION_COOLDOWN_MS)
+		{
+			return;
+		}
+		lastViolationTime = now;
+
 		if (config.showChatMessage())
 		{
 			chatMessageManager.queue(QueuedMessage.builder()
@@ -183,13 +244,6 @@ public class ResourcemanPlugin extends Plugin
 		{
 			client.playSoundEffect(VIOLATION_SOUND);
 		}
-	}
-
-	public void triggerViolationWithTracking(ResourceTracker.ViolationType type)
-	{
-		resourceTracker.trackViolation(type);
-		triggerViolation();
-		panel.update();
 	}
 
 	@Provides
